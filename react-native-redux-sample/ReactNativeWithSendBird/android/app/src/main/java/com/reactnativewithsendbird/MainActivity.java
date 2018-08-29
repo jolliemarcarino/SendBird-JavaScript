@@ -1,9 +1,30 @@
 package com.reactnativewithsendbird;
 
 import com.facebook.react.ReactActivity;
+import android.util.Log;
+import android.os.Bundle;
 import android.content.Intent;
+import cn.jpush.android.api.JPushInterface;
 
 public class MainActivity extends ReactActivity {
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        JPushInterface.init(this);
+        Log.i("MainActivity", "onCreate executed!");
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        JPushInterface.onPause(this);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        JPushInterface.onResume(this);
+    }
 
     /**
      * Returns the name of the main component registered from JavaScript.
@@ -13,6 +34,7 @@ public class MainActivity extends ReactActivity {
     protected String getMainComponentName() {
         return "ReactNativeWithSendBird";
     }
+
     @Override
     public void onNewIntent(Intent intent) {
         super.onNewIntent(intent);

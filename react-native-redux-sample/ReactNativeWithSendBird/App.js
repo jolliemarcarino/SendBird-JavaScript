@@ -14,6 +14,7 @@ import FCM, {
   RemoteNotificationResult,
   WillPresentNotificationResult
 } from "react-native-fcm";
+import JPushModule from 'jpush-react-native';
 import SendBird from 'sendbird';
 
 import {
@@ -33,6 +34,11 @@ import Member from "./src/screens/Member";
 import BlockUser from "./src/screens/BlockUser";
 import GroupChannel from "./src/screens/GroupChannel";
 import GroupChannelInvite from "./src/screens/GroupChannelInvite";
+
+const receiveCustomMsgEvent = 'receivePushMsg'
+const receiveNotificationEvent = 'receiveNotification'
+const openNotificationEvent = 'openNotification'
+const getRegistrationIdEvent = 'getRegistrationId'
 
 const MainNavigator = StackNavigator(
   {
@@ -93,8 +99,85 @@ export default class App extends Component {
   constructor(props) {
     super(props);
   }
-  componentDidMount() {
-    console.disableYellowBox = true;
+
+  /**
+   * Init the JPush Notification
+   */
+  _initJPush = () => {
+    JPushModule.initPush();
+
+    JPushModule.getInfo(map => {
+      // this.setState({
+      //   appkey: map.myAppKey,
+      //   imei: map.myImei,
+      //   package: map.myPackageName,
+      //   deviceId: map.myDeviceId,
+      //   version: map.myVersion
+      // })
+    });
+
+    JPushModule.notifyJSDidLoad(resultCode => {
+      if (resultCode === 0) {
+      }
+    });
+
+    JPushModule.addReceiveCustomMsgListener(map => {
+      // this.setState({
+      //   pushMsg: map.content
+      // })
+      console.log('extras: ' + map.extras)
+    })
+
+    JPushModule.addReceiveNotificationListener(map => {
+      console.log('alertContent: ' + map.alertContent)
+      console.log('extras: ' + map.extras)
+      // var extra = JSON.parse(map.extras);
+      // console.log(extra.key + ": " + extra.value);
+    })
+
+    JPushModule.addReceiveOpenNotificationListener(map => {
+      console.log('Opening notification!')
+      console.log('map.extra: ' + map.extras)
+      // this.jumpSecondActivity()
+      // JPushModule.jumpToPushActivity("SecondActivity");
+    })
+
+    JPushModule.addGetRegistrationIdListener(registrationId => {
+      console.log('Device register succeed, registrationId ' + registrationId)
+    })
+
+    JPushModule.setTags(['lontong'], map => {
+      if (map.errorCode === 0) {
+        console.log('Tag operate succeed, tags: ' + map.tags)
+      } else {
+        console.log('error code: ' + map.errorCode)
+      }
+    })
+
+    const notification = {
+      buildId: 1,
+      id: 5,
+      title: 'jpush',
+      content: 'This is a test!!!!',
+      extra: {
+        key1: 'value1',
+        key2: 'value2'
+      },
+      fireTime: 2000
+    }
+    JPushModule.sendLocalNotification(notification)
+  }
+
+  _cleanJPush = () => {
+    JPushModule.removeReceiveCustomMsgListener(receiveCustomMsgEvent);
+    JPushModule.removeReceiveNotificationListener(receiveNotificationEvent);
+    JPushModule.removeReceiveOpenNotificationListener(openNotificationEvent);
+    JPushModule.removeGetRegistrationIdListener(getRegistrationIdEvent);
+    console.log('Will clear all notifications');
+    JPushModule.clearAllNotifications();
+  }
+
+  _initFCM = () => {
     FCM.requestPermissions();
     FCM.on(FCMEvent.Notification, notif => {
       console.log('foreground notif', notif);
@@ -141,13 +224,23 @@ export default class App extends Component {
     if(Platform.OS === 'ios') {
       PushNotificationIOS.setApplicationIconBadgeNumber(0);
     }
+  }
+
+  componentDidMount() {
+    console.disableYellowBox = true;
+
+    setTimeout(this._initJPush, 200);
+
     console.log('app is launched');
     AppState.addEventListener("change", this._handleAppStateChange);
   }
+
   componentWillUnmount() {
+    this._cleanJPush();
     console.log('app is killed');
     AppState.removeEventListener("change", this._handleAppStateChange);
   }
+
   render() {
     return (
       <Provider store={store}>
@@ -161,6 +254,7 @@ export default class App extends Component {
       .then(res => { })
       .catch(err => { });
   }
+
   _handleAppStateChange = (nextAppState) => {
     const sb = SendBird.getInstance();
     if (sb) {
